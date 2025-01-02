@@ -35,46 +35,66 @@ static void visual_sort_handle_input(void)
     refresh();
 }
 
+static void visual_sort_draw_ui(const enum visual_sort_type sort_type)
+{
+    char algorithm_str[32];
+    sprintf(algorithm_str, " ALGORITHM: %s", visual_sort_type_str[sort_type]);
+
+    char iteration_str[32];
+    sprintf(iteration_str, " ITERATION: %d", iteration++);
+
+    char max_num_str[32];
+    sprintf(max_num_str, " MAX NUMBER: %lld", max_num);
+
+    char frame_ms_str[32];
+    sprintf(frame_ms_str, " FRAME MS: %lld", frame_ms);
+
+    char strings[4][32] = { *algorithm_str, *iteration_str, *max_num_str, *frame_ms_str };
+    uint16_t box_width = 0;
+    for (uint8_t i = 0; i < 32; i++)
+    {
+        uint16_t len = strlen(strings[i]);
+        if (len > box_width)
+        {
+            box_width = len + 1;
+        }
+    }
+
+    mvaddstr(1, 2, algorithm_str);
+    mvaddstr(2, 2, iteration_str);
+    mvaddstr(3, 2, max_num_str);
+    mvaddstr(4, 2, frame_ms_str);
+    cli_draw_box(box_width, 4, 1, 0, true);
+}
+
 
 static void visual_sort_draw_list(struct list* list, const enum visual_sort_type sort_type)
 {
     uint64_t screen_height = cli_get_scrh();
-    uint64_t start_x = cli_get_scrw() / 2 - list->count / 2;
+    uint64_t screen_width = cli_get_scrw();
+    uint64_t start_x = screen_width / 2 - list->count / 2;
+    uint64_t start_y = screen_height - 2;
 
     erase();
-    if (show_ui)
-    {
-        char algorithm_str[32];
-        sprintf(algorithm_str, "algorithm: %s", visual_sort_type_str[sort_type]);
-
-        char iteration_str[32];
-        sprintf(iteration_str, "iteration: %d", iteration++);
-
-        char max_num_str[32];
-        sprintf(max_num_str, "highest number: %lld", max_num);
-
-        char frame_ms_str[32];
-        sprintf(frame_ms_str, "frame ms: %lld", frame_ms);
-
-        mvaddstr(1, 1, algorithm_str);
-        mvaddstr(2, 1, iteration_str);
-        mvaddstr(3, 1, max_num_str);
-        mvaddstr(4, 1, frame_ms_str);
-    }
 
     for (uint64_t i = 0; i < list->count; i++)
     {
         int64_t data = (int64_t)list_get(list, i);
-        int64_t scaled_height = (double)data / max_num * (2 * screen_height - 1);
+        int64_t scaled_height = (double)data / max_num * (2 * start_y);
         for (int64_t j = 0; j < scaled_height / 2; j++)
         {
-            mvaddstr(screen_height - j - 1, start_x + i, "▌");
+            mvaddstr(start_y - j, start_x + i, "▌");
         }
         if (scaled_height % 2)
         {
-            mvaddstr(screen_height - scaled_height / 2 - 1, start_x + i, "▖");
+            mvaddstr(start_y - scaled_height / 2, start_x + i, "▖");
         }
     }
+    if (show_ui)
+    {
+        visual_sort_draw_ui(sort_type);
+    }
+
     visual_sort_handle_input();
     refresh();
 }
