@@ -413,7 +413,7 @@ void visual_sort_main_menu()
         timeout(10);
 
         int selection = cli_menu_run(main_menu, (uint8_t[]){3, 1, 1, 1, 1, 1, 1, 2}, 0, true);
-        if (selection == 6)
+        if (selection == 7)
         {
             free(main_menu);
             return;
