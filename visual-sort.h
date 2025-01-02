@@ -7,6 +7,7 @@
 #include <locale.h>
 #include <stdint.h>
 #include <time.h>
+#include <unistd.h>
 
 enum visual_sort_type
 {
@@ -28,6 +29,16 @@ const static char* visual_sort_type_str[] =
     "radix"
 };
 
-void visual_sort_animate(const uint64_t list_size, const uint64_t max_num_size, const uint64_t frame_time_ms, const enum visual_sort_type sort_type);
+const static uint16_t visual_sort_type_ms[] = 
+{
+    5,
+    30,
+    5,
+    15,
+    15,
+    15
+};
+
+void visual_sort_main_menu();
 
 #endif

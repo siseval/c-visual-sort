@@ -2,12 +2,16 @@
 
 static int32_t iteration = 0;
 static int64_t max_num = 0;
-static uint64_t frame_ms = 0;
+static int16_t frame_ms = 0;
 static bool show_ui = false;
 
-static void set_frame_ms(const uint64_t new_frame_ms)
+static void set_frame_ms(const int16_t new_frame_ms)
 {
     frame_ms = new_frame_ms;
+    if (frame_ms < 1)
+    {
+        frame_ms = 1;
+    }
     timeout(frame_ms);
 }
 
@@ -16,13 +20,12 @@ static void toggle_ui(void)
     show_ui = !show_ui;
 }
 
-static void visual_sort_handle_input(void)
+static bool handle_input(void)
 {
     switch (getch())
     {
         case 'q':
-            endwin();
-            exit(0);
+            return true;
         case 'k':
             set_frame_ms(frame_ms + 10);
             break;
@@ -33,9 +36,10 @@ static void visual_sort_handle_input(void)
             toggle_ui();
     }
     refresh();
+    return false;
 }
 
-static void visual_sort_draw_ui(const enum visual_sort_type sort_type)
+static void draw_ui(const enum visual_sort_type sort_type)
 {
     char algorithm_str[32];
     sprintf(algorithm_str, " ALGORITHM: %s", visual_sort_type_str[sort_type]);
@@ -47,7 +51,7 @@ static void visual_sort_draw_ui(const enum visual_sort_type sort_type)
     sprintf(max_num_str, " MAX NUMBER: %lld", max_num);
 
     char frame_ms_str[32];
-    sprintf(frame_ms_str, " FRAME MS: %lld", frame_ms);
+    sprintf(frame_ms_str, " FRAME MS: %d", frame_ms);
 
     char strings[4][32] = { *algorithm_str, *iteration_str, *max_num_str, *frame_ms_str };
     uint16_t box_width = 0;
@@ -68,7 +72,7 @@ static void visual_sort_draw_ui(const enum visual_sort_type sort_type)
 }
 
 
-static void visual_sort_draw_list(struct list* list, const enum visual_sort_type sort_type)
+static void draw_iteration(struct list* list, const enum visual_sort_type sort_type)
 {
     uint64_t screen_height = cli_get_scrh();
     uint64_t screen_width = cli_get_scrw();
@@ -85,18 +89,23 @@ static void visual_sort_draw_list(struct list* list, const enum visual_sort_type
         {
             mvaddstr(start_y - j, start_x + i, "▌");
         }
-        if (scaled_height % 2)
+        if (scaled_height % 2 || scaled_height == 0)
         {
             mvaddstr(start_y - scaled_height / 2, start_x + i, "▖");
         }
     }
     if (show_ui)
     {
-        visual_sort_draw_ui(sort_type);
+        draw_ui(sort_type);
     }
 
-    visual_sort_handle_input();
     refresh();
+}
+
+static bool do_iteration(struct list* list, const enum visual_sort_type sort_type)
+{
+    draw_iteration(list, sort_type);
+    return handle_input();
 }
 
 static struct list* visual_sort_bubble(struct list* list)
@@ -110,14 +119,16 @@ static struct list* visual_sort_bubble(struct list* list)
             {
                 is_sorted = false;
                 list_swap(list, j, j + 1);
+                if (do_iteration(list, VISUAL_SORT_BUBBLE))
+                {
+                    return list;
+                }
             }
         }
         if (is_sorted)
         {
             break;
         }
-        visual_sort_draw_list(list, VISUAL_SORT_BUBBLE);
-            
     }
     return list;
 }
@@ -139,8 +150,10 @@ static struct list* visual_sort_selection(struct list* list)
             }
         }
         list_swap(list, i, min_index);
-        visual_sort_draw_list(list, VISUAL_SORT_SELECTION);
-            
+        if (do_iteration(list, VISUAL_SORT_SELECTION))
+        {
+            return list;
+        }
     }
     return list;
 }
@@ -154,8 +167,10 @@ static struct list* visual_sort_insertion(struct list* list)
             if ((int64_t)list_get(list, j - 1) > (int64_t)list_get(list, j))
             {
                 list_swap(list, j - 1, j);
-                visual_sort_draw_list(list, VISUAL_SORT_INSERTION);
-                           
+                if (do_iteration(list, VISUAL_SORT_INSERTION))
+                {
+                    return list;
+                }
             }
         }
     }
@@ -172,7 +187,10 @@ static struct list* visual_sort_heap(struct list* list)
         while (index > 0 && (int64_t)list_get(list, index) > (int64_t)list_get(list, parent_index))
         {
             list_swap(list, index, parent_index);
-            visual_sort_draw_list(list, VISUAL_SORT_HEAP);
+            if (do_iteration(list, VISUAL_SORT_HEAP))
+            {
+                return list;
+            }
             index = parent_index;
             parent_index = (index - 1) / 2;
         }
@@ -180,7 +198,10 @@ static struct list* visual_sort_heap(struct list* list)
     for (uint64_t i = list->count - 1; i > 0; i--)
     {
         list_swap(list, 0, i);
-        visual_sort_draw_list(list, VISUAL_SORT_HEAP);
+        if (do_iteration(list, VISUAL_SORT_HEAP))
+        {
+            return list;
+        }
         uint64_t index = 0;
 
         while (index * 2 + 1 < i)
@@ -194,7 +215,10 @@ static struct list* visual_sort_heap(struct list* list)
             if ((int64_t)list_get(list, index) < (int64_t)list_get(list, candidate_index))
             {
                 list_swap(list, index, candidate_index);
-                visual_sort_draw_list(list, VISUAL_SORT_HEAP);
+                if (do_iteration(list, VISUAL_SORT_HEAP))
+                {
+                    return list;
+                }
                 index = candidate_index;
             }
             else
@@ -211,7 +235,10 @@ static int64_t quick_sort_partition(struct list* list, const int64_t low_index, 
     int64_t pivot_index = low_index + rand() % (high_index - low_index);
     int64_t pivot_data = (int64_t)list_get(list, pivot_index);
     list_swap(list, pivot_index, high_index);
-    visual_sort_draw_list(list, VISUAL_SORT_QUICK);
+    if (do_iteration(list, VISUAL_SORT_QUICK))
+    {
+        return 0;
+    }
 
     int64_t left_index = low_index;
     int64_t right_index = high_index - 1;
@@ -229,13 +256,18 @@ static int64_t quick_sort_partition(struct list* list, const int64_t low_index, 
         if (left_index < right_index)
         {
             list_swap(list, left_index, right_index);
-            visual_sort_draw_list(list, VISUAL_SORT_QUICK);
-                    
+            if (do_iteration(list, VISUAL_SORT_QUICK))
+            {
+                return 0;
+            }
         }
     }
 
     list_swap(list, left_index, high_index);
-    visual_sort_draw_list(list, VISUAL_SORT_QUICK);
+    if (do_iteration(list, VISUAL_SORT_QUICK))
+    {
+        return 0;
+    }
     return left_index;
 }
 
@@ -281,8 +313,10 @@ static struct list* bucket_sort_by_digit(struct list* list, const uint64_t expon
         for (uint64_t j = 0; j < bucket->count; j++)
         {
             list_replace(list, list_get(bucket, j), index);
-            visual_sort_draw_list(list, VISUAL_SORT_RADIX);
-                    
+            if (do_iteration(list, VISUAL_SORT_RADIX))
+            {
+                return list;
+            }
             index++;
         }
         free(bucket);
@@ -305,7 +339,7 @@ static struct list* visual_sort_radix(struct list* list)
     return list;
 }
 
-void visual_sort_animate(const uint64_t list_size, const uint64_t max_num_size, const uint64_t frame_time_ms, const enum visual_sort_type sort_type)
+static void animate(const uint64_t list_size, const uint64_t max_num_size, const uint64_t frame_time_ms, const enum visual_sort_type sort_type)
 {
     iteration = 0;
     max_num = max_num_size;
@@ -339,8 +373,45 @@ void visual_sort_animate(const uint64_t list_size, const uint64_t max_num_size, 
             visual_sort_radix(list);
             break;
     }
+    if (list_is_sorted_int(list))
+    {
+        usleep(3000000);
+    }
     list_destroy(list);
-    
-    timeout(-1);
-    visual_sort_handle_input();
+}
+
+void visual_sort_main_menu()
+{
+    struct cli_menu* main_menu = cli_menu_create("-= SELECT ALGORITHM =-", ":: ", " ::", 4, 1, true);
+    cli_menu_add_button(main_menu, "Screensaver");
+    cli_menu_add_button(main_menu, "Bubble");
+    cli_menu_add_button(main_menu, "Selection");
+    cli_menu_add_button(main_menu, "Insertion");
+    cli_menu_add_button(main_menu, "Heap");
+    cli_menu_add_button(main_menu, "Quick");
+    cli_menu_add_button(main_menu, "Radix");
+    cli_menu_add_button(main_menu, "Quit");
+
+    while (true)
+    {
+        timeout(10);
+
+        int selection = cli_menu_run(main_menu, (uint8_t[]){3, 1, 1, 1, 1, 1, 1, 2}, 0, true);
+        if (selection == 6)
+        {
+            free(main_menu);
+            return;
+        }
+        if (selection == 0)
+        {
+            enum visual_sort_type type = rand() % 6;
+            animate(cli_get_scrw() - 4, 10000, visual_sort_type_ms[type], type);
+            continue;
+        }
+
+        animate(80, 10000, visual_sort_type_ms[selection - 1], selection - 1);
+        main_menu->has_selected = false;
+    }
+
+    free(main_menu);
 }
