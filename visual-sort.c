@@ -4,6 +4,7 @@ static int32_t iteration = 0;
 static int64_t max_num = 0;
 static int16_t frame_ms = 0;
 static bool show_ui = false;
+static bool should_quit = false;
 
 static void set_frame_ms(const int16_t new_frame_ms)
 {
@@ -20,12 +21,13 @@ static void toggle_ui(void)
     show_ui = !show_ui;
 }
 
-static bool handle_input(void)
+static void handle_input(void)
 {
     switch (getch())
     {
         case 'q':
-            return true;
+            should_quit = true;
+            return;
         case 'k':
             set_frame_ms(frame_ms + 10);
             break;
@@ -36,7 +38,6 @@ static bool handle_input(void)
             toggle_ui();
     }
     refresh();
-    return false;
 }
 
 static void draw_ui(const enum visual_sort_type sort_type)
@@ -102,10 +103,10 @@ static void draw_iteration(struct list* list, const enum visual_sort_type sort_t
     refresh();
 }
 
-static bool do_iteration(struct list* list, const enum visual_sort_type sort_type)
+static void do_iteration(struct list* list, const enum visual_sort_type sort_type)
 {
     draw_iteration(list, sort_type);
-    return handle_input();
+    handle_input();
 }
 
 static struct list* visual_sort_bubble(struct list* list)
@@ -119,7 +120,8 @@ static struct list* visual_sort_bubble(struct list* list)
             {
                 is_sorted = false;
                 list_swap(list, j, j + 1);
-                if (do_iteration(list, VISUAL_SORT_BUBBLE))
+                do_iteration(list, VISUAL_SORT_BUBBLE);
+                if (should_quit)
                 {
                     return list;
                 }
@@ -150,7 +152,8 @@ static struct list* visual_sort_selection(struct list* list)
             }
         }
         list_swap(list, i, min_index);
-        if (do_iteration(list, VISUAL_SORT_SELECTION))
+        do_iteration(list, VISUAL_SORT_SELECTION);
+        if (should_quit)
         {
             return list;
         }
@@ -167,7 +170,8 @@ static struct list* visual_sort_insertion(struct list* list)
             if ((int64_t)list_get(list, j - 1) > (int64_t)list_get(list, j))
             {
                 list_swap(list, j - 1, j);
-                if (do_iteration(list, VISUAL_SORT_INSERTION))
+                do_iteration(list, VISUAL_SORT_INSERTION);
+                if (should_quit)
                 {
                     return list;
                 }
@@ -187,7 +191,8 @@ static struct list* visual_sort_heap(struct list* list)
         while (index > 0 && (int64_t)list_get(list, index) > (int64_t)list_get(list, parent_index))
         {
             list_swap(list, index, parent_index);
-            if (do_iteration(list, VISUAL_SORT_HEAP))
+            do_iteration(list, VISUAL_SORT_HEAP);
+            if (should_quit)
             {
                 return list;
             }
@@ -198,7 +203,8 @@ static struct list* visual_sort_heap(struct list* list)
     for (uint64_t i = list->count - 1; i > 0; i--)
     {
         list_swap(list, 0, i);
-        if (do_iteration(list, VISUAL_SORT_HEAP))
+        do_iteration(list, VISUAL_SORT_HEAP);
+        if (should_quit)
         {
             return list;
         }
@@ -215,7 +221,8 @@ static struct list* visual_sort_heap(struct list* list)
             if ((int64_t)list_get(list, index) < (int64_t)list_get(list, candidate_index))
             {
                 list_swap(list, index, candidate_index);
-                if (do_iteration(list, VISUAL_SORT_HEAP))
+                do_iteration(list, VISUAL_SORT_HEAP);
+                if (should_quit)
                 {
                     return list;
                 }
@@ -235,7 +242,8 @@ static int64_t quick_sort_partition(struct list* list, const int64_t low_index, 
     int64_t pivot_index = low_index + rand() % (high_index - low_index);
     int64_t pivot_data = (int64_t)list_get(list, pivot_index);
     list_swap(list, pivot_index, high_index);
-    if (do_iteration(list, VISUAL_SORT_QUICK))
+    do_iteration(list, VISUAL_SORT_QUICK);
+    if (should_quit)
     {
         return 0;
     }
@@ -256,7 +264,8 @@ static int64_t quick_sort_partition(struct list* list, const int64_t low_index, 
         if (left_index < right_index)
         {
             list_swap(list, left_index, right_index);
-            if (do_iteration(list, VISUAL_SORT_QUICK))
+            do_iteration(list, VISUAL_SORT_QUICK);
+            if (should_quit)
             {
                 return 0;
             }
@@ -264,7 +273,8 @@ static int64_t quick_sort_partition(struct list* list, const int64_t low_index, 
     }
 
     list_swap(list, left_index, high_index);
-    if (do_iteration(list, VISUAL_SORT_QUICK))
+    do_iteration(list, VISUAL_SORT_QUICK);
+    if (should_quit)
     {
         return 0;
     }
@@ -278,6 +288,10 @@ static struct list* quick_sort_recursive(struct list* list, const int64_t low_in
         return list;
     }
     int64_t pivot_index = quick_sort_partition(list, low_index, high_index);
+    if (should_quit)
+    {
+        return list;
+    }
 
     quick_sort_recursive(list, low_index, pivot_index - 1);
     quick_sort_recursive(list, pivot_index + 1, high_index);
@@ -313,7 +327,8 @@ static struct list* bucket_sort_by_digit(struct list* list, const uint64_t expon
         for (uint64_t j = 0; j < bucket->count; j++)
         {
             list_replace(list, list_get(bucket, j), index);
-            if (do_iteration(list, VISUAL_SORT_RADIX))
+            do_iteration(list, VISUAL_SORT_RADIX);
+            if (should_quit)
             {
                 return list;
             }
@@ -394,6 +409,7 @@ void visual_sort_main_menu()
 
     while (true)
     {
+        should_quit = false;
         timeout(10);
 
         int selection = cli_menu_run(main_menu, (uint8_t[]){3, 1, 1, 1, 1, 1, 1, 2}, 0, true);
@@ -406,7 +422,10 @@ void visual_sort_main_menu()
         {
             enum visual_sort_type type = rand() % 6;
             animate(cli_get_scrw() - 4, 10000, visual_sort_type_ms[type], type);
-            continue;
+            if (!should_quit)
+            {
+                continue;
+            }
         }
 
         animate(80, 10000, visual_sort_type_ms[selection - 1], selection - 1);
