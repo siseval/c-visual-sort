@@ -67,9 +67,9 @@ static void draw_ui(const enum visual_sort_type sort_type)
 
     mvaddstr(1, 2, algorithm_str);
     mvaddstr(2, 2, iteration_str);
-    mvaddstr(3, 2, max_num_str);
-    mvaddstr(4, 2, frame_ms_str);
-    cli_draw_box(box_width, 4, 1, 0, true);
+    // mvaddstr(3, 2, max_num_str);
+    // mvaddstr(4, 2, frame_ms_str);
+    cli_draw_box(box_width, 2, 1, 0, true);
 }
 
 
