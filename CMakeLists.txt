@@ -8,7 +8,10 @@ add_executable(
     list.c
     cli.c
     )
+
 find_package(Curses REQUIRED)
+set(CURSES_NEED_NCURSES TRUE)
+set(CURSES_NEED_WIDE TRUE)
 
 include_directories(${CURSES_INCLUDE_DIRS})
 target_link_libraries(visual-sort ${CURSES_LIBRARY})

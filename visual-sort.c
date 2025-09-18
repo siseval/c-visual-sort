@@ -3,17 +3,24 @@
 static int32_t iteration = 0;
 static int64_t max_num = 0;
 static int16_t frame_ms = 0;
+static double ms_mult = 1.0;
 static bool show_ui = false;
 static bool should_quit = false;
 
-static void set_frame_ms(const int16_t new_frame_ms)
+
+static void update_frame_ms(const int16_t ms)
 {
-    frame_ms = new_frame_ms;
-    if (frame_ms < 1)
+    timeout(frame_ms * ms_mult);
+}
+
+static void set_ms_mult(const double mult)
+{
+    ms_mult = mult;
+    if (ms_mult < 0.1)
     {
-        frame_ms = 1;
+        ms_mult = 0.1;
     }
-    timeout(frame_ms);
+    update_frame_ms(frame_ms);
 }
 
 static void toggle_ui(void)
@@ -29,10 +36,10 @@ static void handle_input(void)
             should_quit = true;
             return;
         case 'k':
-            set_frame_ms(frame_ms + 10);
+            set_ms_mult(ms_mult + 0.5);
             break;
         case 'j':
-            set_frame_ms(frame_ms - 10);
+            set_ms_mult(ms_mult - 0.5);
             break;
         case 'u':
             toggle_ui();
@@ -360,8 +367,6 @@ static void animate(const uint64_t list_size, const uint64_t max_num_size, const
     max_num = max_num_size;
     frame_ms = frame_time_ms;
 
-    timeout(frame_ms);
-
     struct list* list = list_create(list_size);
     for (uint64_t i = 0; i < list_size; i++)
     {
@@ -410,7 +415,8 @@ void visual_sort_main_menu()
     while (true)
     {
         should_quit = false;
-        timeout(10);
+        frame_ms = 10;
+        set_ms_mult(1);
 
         int selection = cli_menu_run(main_menu, (uint8_t[]){3, 1, 1, 1, 1, 1, 1, 2}, 0, true);
         if (selection == 7)
@@ -428,6 +434,7 @@ void visual_sort_main_menu()
             }
         }
 
+        set_ms_mult(10);
         animate(80, 10000, visual_sort_type_ms[selection - 1], selection - 1);
         main_menu->has_selected = false;
     }
