@@ -1,4 +1,6 @@
-#include "list.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <list.h>
 
 
 static bool list_realloc(struct list* list, uint64_t size)

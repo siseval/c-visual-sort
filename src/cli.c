@@ -1,4 +1,6 @@
-#include "cli.h"
+#include <stdlib.h>
+#include <string.h>
+#include <cli.h>
 
 struct cli_menu* cli_menu_create(const char* top_text, const char* left_str, const char* right_str, const int selected_col, const int normal_col, const bool bold)
 {

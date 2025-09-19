@@ -1,13 +1,20 @@
 cmake_minimum_required(VERSION 3.10)
-set(CMAKE_C_STANDARD 23)
 project(visual-sort)
-add_executable(
-    visual-sort
-    main.c
-    visual-sort.c
-    list.c
-    cli.c
-    )
+
+set(CMAKE_C_STANDARD 23)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+add_executable(visual-sort
+    src/main.c
+    src/visual-sort.c
+    src/list.c
+    src/cli.c
+)
+
+target_include_directories(visual-sort
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
 
 find_package(Curses REQUIRED)
 set(CURSES_NEED_NCURSES TRUE)

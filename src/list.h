@@ -1,9 +1,6 @@
 #ifndef LIST_H
 #define LIST_H
 
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <limits.h>

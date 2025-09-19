@@ -1,4 +1,9 @@
-#include "visual-sort.h"
+#include <stdlib.h>
+#include <string.h>
+#include <ncurses.h>
+#include <visual-sort.h>
+#include <list.h>
+#include <cli.h>
 
 static int32_t comparisons = 0;
 static int32_t swaps = 0;

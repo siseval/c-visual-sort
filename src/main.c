@@ -1,4 +1,8 @@
-#include "visual-sort.h"
+#include <stdlib.h>
+#include <locale.h>
+#include <time.h>
+#include <ncurses.h>
+#include <visual-sort.h>
 
 int main()
 {

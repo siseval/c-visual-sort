@@ -2,8 +2,6 @@
 #define MENU_H
 
 #include <curses.h>
-#include <stdlib.h>
-#include <string.h>
 #include <stdint.h>
 
 #define K_ENTER 10

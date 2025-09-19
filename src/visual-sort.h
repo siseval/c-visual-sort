@@ -1,12 +1,7 @@
 #ifndef VISUAL_SORT_H
 #define VISUAL_SORT_H
 
-#include "list.h"
-#include "cli.h"
-
-#include <locale.h>
 #include <stdint.h>
-#include <time.h>
 #include <unistd.h>
 
 enum visual_sort_type
