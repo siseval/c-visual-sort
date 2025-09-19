@@ -1,7 +1,7 @@
 ## Visual-Sort
 
-This is a simple sorting algorithm visualizer, made is c  
-The code was mostly written in an evening, and should not be seen by anyone
+This is a simple sorting algorithm visualizer, made is c.  
+The code was mostly written in an evening, and should not be seen by anyone.
 
 ### Instructions
 
