@@ -1,6 +1,7 @@
 #include "visual-sort.h"
 
-static int32_t iteration = 0;
+static int32_t comparisons = 0;
+static int32_t swaps = 0;
 static int64_t max_num = 0;
 static int16_t frame_ms = 0;
 static double ms_mult = 1.0;
@@ -35,11 +36,11 @@ static void handle_input(void)
         case 'q':
             should_quit = true;
             return;
-        case 'k':
-            set_ms_mult(ms_mult + 0.5);
-            break;
         case 'j':
-            set_ms_mult(ms_mult - 0.5);
+            set_ms_mult(ms_mult * 1.10);
+            break;
+        case 'k':
+            set_ms_mult(ms_mult * 0.90);
             break;
         case 'u':
             toggle_ui();
@@ -52,8 +53,12 @@ static void draw_ui(const enum visual_sort_type sort_type)
     char algorithm_str[32];
     sprintf(algorithm_str, " ALGORITHM: %s", visual_sort_type_str[sort_type]);
 
-    char iteration_str[32];
-    sprintf(iteration_str, " ITERATION: %d", iteration++);
+    char swaps_str[32];
+    sprintf(swaps_str, " SWAPS: %d", swaps);
+
+    char comparisons_str[32];
+    sprintf(comparisons_str, " COMPARISONS: %d", comparisons);
+
 
     char max_num_str[32];
     sprintf(max_num_str, " MAX NUMBER: %lld", max_num);
@@ -61,7 +66,7 @@ static void draw_ui(const enum visual_sort_type sort_type)
     char frame_ms_str[32];
     sprintf(frame_ms_str, " FRAME MS: %d", frame_ms);
 
-    char strings[4][32] = { *algorithm_str, *iteration_str, *max_num_str, *frame_ms_str };
+    char strings[5][32] = { *algorithm_str, *swaps_str, *comparisons_str, *max_num_str, *frame_ms_str };
     uint16_t box_width = 0;
     for (uint8_t i = 0; i < 32; i++)
     {
@@ -73,14 +78,32 @@ static void draw_ui(const enum visual_sort_type sort_type)
     }
 
     mvaddstr(1, 2, algorithm_str);
-    mvaddstr(2, 2, iteration_str);
+    mvaddstr(2, 2, swaps_str);
+    mvaddstr(3, 2, comparisons_str);
     // mvaddstr(3, 2, max_num_str);
     // mvaddstr(4, 2, frame_ms_str);
-    cli_draw_box(box_width, 2, 1, 0, true);
+    cli_draw_box(box_width, 3, 1, 0, true);
 }
 
+static void swap(struct list* list, const uint64_t a, const uint64_t b)
+{
+    list_swap(list, a, b);
+    swaps++;
+}
 
-static void draw_iteration(struct list* list, const enum visual_sort_type sort_type)
+static bool greater(struct list* list, const uint64_t a, const uint64_t b)
+{
+    comparisons++;
+    return (int64_t)list_get(list, a) > (int64_t)list_get(list, b);
+}
+
+static bool greater_equals(struct list* list, const uint64_t a, const uint64_t b)
+{
+    comparisons++;
+    return (int64_t)list_get(list, a) >= (int64_t)list_get(list, b);
+}
+
+static void draw_iteration(struct list* list, const enum visual_sort_type sort_type, int16_t swap_a, int16_t swap_b)
 {
     uint64_t screen_height = cli_get_scrh();
     uint64_t screen_width = cli_get_scrw();
@@ -91,6 +114,14 @@ static void draw_iteration(struct list* list, const enum visual_sort_type sort_t
 
     for (uint64_t i = 0; i < list->count; i++)
     {
+        if (i == swap_a || i == swap_b)
+        {
+            attron(COLOR_PAIR(4));
+        }
+        else
+        {
+            attron(COLOR_PAIR(1));
+        }
         int64_t data = (int64_t)list_get(list, i);
         int64_t scaled_height = (double)data / max_num * (2 * start_y);
         for (int64_t j = 0; j < scaled_height / 2; j++)
@@ -104,15 +135,16 @@ static void draw_iteration(struct list* list, const enum visual_sort_type sort_t
     }
     if (show_ui)
     {
+        attron(COLOR_PAIR(1));
         draw_ui(sort_type);
     }
 
     refresh();
 }
 
-static void do_iteration(struct list* list, const enum visual_sort_type sort_type)
+static void do_iteration(struct list* list, const enum visual_sort_type sort_type, uint16_t swap_a, uint16_t swap_b)
 {
-    draw_iteration(list, sort_type);
+    draw_iteration(list, sort_type, swap_a, swap_b);
     handle_input();
 }
 
@@ -123,11 +155,11 @@ static struct list* visual_sort_bubble(struct list* list)
         bool is_sorted = true;
         for (uint64_t j = 0; j < list->count - i - 1; j++)
         {
-            if ((int64_t)list_get(list, j) > (int64_t)list_get(list, j + 1))
+            if (greater(list, j, j + 1))
             {
                 is_sorted = false;
-                list_swap(list, j, j + 1);
-                do_iteration(list, VISUAL_SORT_BUBBLE);
+                swap(list, j, j + 1);
+                do_iteration(list, VISUAL_SORT_BUBBLE, j, j + 1);
                 if (should_quit)
                 {
                     return list;
@@ -146,20 +178,20 @@ static struct list* visual_sort_selection(struct list* list)
 {
     for (uint64_t i = 0; i < list->count; i++)
     {
-        int64_t min = (int64_t)INT_MAX;
+        int64_t min = -1;
         uint64_t min_index = 0;
 
         for (uint64_t j = i; j < list->count; j++)
         {
             int64_t cur_data = (int64_t)list_get(list, j);
-            if (cur_data < min)
+            if (min == -1 || greater(list, min_index, j))
             {
                 min = cur_data;
                 min_index = j;
             }
         }
-        list_swap(list, i, min_index);
-        do_iteration(list, VISUAL_SORT_SELECTION);
+        swap(list, i, min_index);
+        do_iteration(list, VISUAL_SORT_SELECTION, i, min_index);
         if (should_quit)
         {
             return list;
@@ -174,10 +206,10 @@ static struct list* visual_sort_insertion(struct list* list)
     {
         for (uint64_t j = i; j > 0; j--)
         {
-            if ((int64_t)list_get(list, j - 1) > (int64_t)list_get(list, j))
+            if (greater(list, j - 1, j))
             {
-                list_swap(list, j - 1, j);
-                do_iteration(list, VISUAL_SORT_INSERTION);
+                swap(list, j - 1, j);
+                do_iteration(list, VISUAL_SORT_INSERTION, j - 1, j);
                 if (should_quit)
                 {
                     return list;
@@ -195,10 +227,10 @@ static struct list* visual_sort_heap(struct list* list)
         uint64_t index = i;
         uint64_t parent_index = (index - 1) / 2;
 
-        while (index > 0 && (int64_t)list_get(list, index) > (int64_t)list_get(list, parent_index))
+        while (index > 0 && greater(list, index, parent_index))
         {
-            list_swap(list, index, parent_index);
-            do_iteration(list, VISUAL_SORT_HEAP);
+            swap(list, index, parent_index);
+            do_iteration(list, VISUAL_SORT_HEAP, index, parent_index);
             if (should_quit)
             {
                 return list;
@@ -209,8 +241,8 @@ static struct list* visual_sort_heap(struct list* list)
     }
     for (uint64_t i = list->count - 1; i > 0; i--)
     {
-        list_swap(list, 0, i);
-        do_iteration(list, VISUAL_SORT_HEAP);
+        swap(list, 0, i);
+        do_iteration(list, VISUAL_SORT_HEAP, 0, i);
         if (should_quit)
         {
             return list;
@@ -225,10 +257,10 @@ static struct list* visual_sort_heap(struct list* list)
             int64_t right_data = (int64_t)list_get(list, right_index);
             
             uint64_t candidate_index = right_index >= i || left_data >= right_data ? left_index : right_index;
-            if ((int64_t)list_get(list, index) < (int64_t)list_get(list, candidate_index))
+            if (greater(list, candidate_index, index))
             {
-                list_swap(list, index, candidate_index);
-                do_iteration(list, VISUAL_SORT_HEAP);
+                swap(list, index, candidate_index);
+                do_iteration(list, VISUAL_SORT_HEAP, index, candidate_index);
                 if (should_quit)
                 {
                     return list;
@@ -248,8 +280,8 @@ static int64_t quick_sort_partition(struct list* list, const int64_t low_index, 
 {
     int64_t pivot_index = low_index + rand() % (high_index - low_index);
     int64_t pivot_data = (int64_t)list_get(list, pivot_index);
-    list_swap(list, pivot_index, high_index);
-    do_iteration(list, VISUAL_SORT_QUICK);
+    swap(list, pivot_index, high_index);
+    do_iteration(list, VISUAL_SORT_QUICK, pivot_index, high_index);
     if (should_quit)
     {
         return 0;
@@ -260,18 +292,18 @@ static int64_t quick_sort_partition(struct list* list, const int64_t low_index, 
 
     while (left_index <= right_index)
     {
-        while (left_index <= right_index && (int64_t)list_get(list, left_index) <= pivot_data)
+        while (left_index <= right_index && greater_equals(list, high_index, left_index))
         {
             left_index++;
         }
-        while (right_index >= left_index && (int64_t)list_get(list, right_index) >= pivot_data)
+        while (right_index >= left_index && greater_equals(list, right_index, high_index))
         {
             right_index--;
         }
         if (left_index < right_index)
         {
-            list_swap(list, left_index, right_index);
-            do_iteration(list, VISUAL_SORT_QUICK);
+            swap(list, left_index, right_index);
+            do_iteration(list, VISUAL_SORT_QUICK, left_index, right_index);
             if (should_quit)
             {
                 return 0;
@@ -279,8 +311,8 @@ static int64_t quick_sort_partition(struct list* list, const int64_t low_index, 
         }
     }
 
-    list_swap(list, left_index, high_index);
-    do_iteration(list, VISUAL_SORT_QUICK);
+    swap(list, left_index, high_index);
+    do_iteration(list, VISUAL_SORT_QUICK, left_index, high_index);
     if (should_quit)
     {
         return 0;
@@ -334,7 +366,7 @@ static struct list* bucket_sort_by_digit(struct list* list, const uint64_t expon
         for (uint64_t j = 0; j < bucket->count; j++)
         {
             list_replace(list, list_get(bucket, j), index);
-            do_iteration(list, VISUAL_SORT_RADIX);
+            do_iteration(list, VISUAL_SORT_RADIX, list->count > 1 ? index - 1 : index, index);
             if (should_quit)
             {
                 return list;
@@ -363,7 +395,12 @@ static struct list* visual_sort_radix(struct list* list)
 
 static void animate(const uint64_t list_size, const uint64_t max_num_size, const uint64_t frame_time_ms, const enum visual_sort_type sort_type)
 {
-    iteration = 0;
+    set_ms_mult(ms_mult);
+    attron(A_BOLD);
+
+    swaps = 0;
+    comparisons = 0;
+
     max_num = max_num_size;
     frame_ms = frame_time_ms;
 
@@ -395,6 +432,13 @@ static void animate(const uint64_t list_size, const uint64_t max_num_size, const
     }
     if (list_is_sorted_int(list))
     {
+        for (uint16_t i = 0; i <= list_size; i++)
+        {
+            timeout(15);
+            draw_iteration(list, sort_type, i, i + 1);
+            handle_input();
+            update_frame_ms(frame_ms);
+        }
         usleep(3000000);
     }
     list_destroy(list);
