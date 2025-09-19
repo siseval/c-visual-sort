@@ -1,11 +1,11 @@
 ## Visual-Sort
 
-A simple sorting algorithm visualizer, written in C  
+A simple Unix-terminal based sorting algorithm visualizer using **ncurses**, written in C  
 The code was mostly written in an evening, and should not be seen by anyone
 
 ### Setup
 
-1. Install *ncurses* if missing
+1. Install **ncurses** if missing
 2. `cd` to main source directory
 3. `mkdir build`
 4. `cd build`
