@@ -281,6 +281,85 @@ static struct list* visual_sort_heap(struct list* list)
     return list; 
 }
 
+
+static struct list* merge_sort_recursive(struct list* list, int64_t low, int64_t high)
+{
+    if (low >= high)
+    {
+        return list;
+    }
+    int64_t mid = low + (high - low) / 2;
+
+    merge_sort_recursive(list, low, mid);
+    if (should_quit)
+    {
+        return list;
+    }
+
+    merge_sort_recursive(list, mid + 1, high);
+    if (should_quit)
+    {
+        return list;
+    }
+
+    int64_t left_index = low;
+    int64_t right_index = mid + 1;
+    int64_t merged_size = high - low + 1;
+
+    int64_t* temp = malloc(sizeof(int64_t) * merged_size);
+    if (!temp)
+    {
+        return list;
+    }
+
+    int64_t temp_index = 0;
+
+    while (left_index <= mid && right_index <= high)
+    {
+        int64_t left_val = (int64_t)list_get(list, left_index);
+        int64_t right_val = (int64_t)list_get(list, right_index);
+
+        if (greater_equals(list, right_index, left_index))
+        {
+            temp[temp_index++] = left_val;
+            left_index++;
+        }
+        else
+        {
+            temp[temp_index++] = right_val;
+            right_index++;
+        }
+    }
+    while (left_index <= mid)
+    {
+        temp[temp_index++] = (int64_t)list_get(list, left_index++);
+    }
+    while (right_index <= high)
+    {
+        temp[temp_index++] = (int64_t)list_get(list, right_index++);
+    }
+
+    for (int64_t i = 0; i < merged_size; i++)
+    {
+        list_replace(list, (void*)temp[i], low + i);
+        do_iteration(list, VISUAL_SORT_MERGE, low + i, low + i);
+        if (should_quit)
+        {
+            free(temp);
+            return list;
+        }
+    }
+
+    free(temp);
+    return list;
+}
+
+static struct list* visual_sort_merge(struct list* list)
+{
+    return merge_sort_recursive(list, 0, list->count - 1);
+}
+
+
 static int64_t quick_sort_partition(struct list* list, const int64_t low_index, const int64_t high_index)
 {
     int64_t pivot_index = low_index + rand() % (high_index - low_index);
@@ -428,6 +507,9 @@ static void animate(const uint64_t list_size, const uint64_t max_num_size, const
         case VISUAL_SORT_HEAP:
             visual_sort_heap(list);
             break;
+        case VISUAL_SORT_MERGE:
+            visual_sort_merge(list);
+            break;
         case VISUAL_SORT_QUICK:
             visual_sort_quick(list);
             break;
@@ -457,6 +539,7 @@ void visual_sort_main_menu()
     cli_menu_add_button(main_menu, "Selection");
     cli_menu_add_button(main_menu, "Insertion");
     cli_menu_add_button(main_menu, "Heap");
+    cli_menu_add_button(main_menu, "Merge");
     cli_menu_add_button(main_menu, "Quick");
     cli_menu_add_button(main_menu, "Radix");
     cli_menu_add_button(main_menu, "Quit");
@@ -467,15 +550,15 @@ void visual_sort_main_menu()
         frame_ms = 10;
         set_ms_mult(1);
 
-        int selection = cli_menu_run(main_menu, (uint8_t[]){3, 1, 1, 1, 1, 1, 1, 2}, 0, true);
-        if (selection == 7)
+        int selection = cli_menu_run(main_menu, (uint8_t[]){3, 1, 1, 1, 1, 1, 1, 1, 2}, 0, true);
+        if (selection == 8)
         {
             free(main_menu);
             return;
         }
         if (selection == 0)
         {
-            enum visual_sort_type type = rand() % 6;
+            enum visual_sort_type type = rand() % 7;
             animate(cli_get_scrw() - 4, 10000, visual_sort_type_ms[type], type);
             if (!should_quit)
             {
